@@ -1,4 +1,6 @@
 const express = require("express");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const { Client } = require("pg");
 const port = 3000;
 const app = express();
@@ -100,6 +102,55 @@ app.delete("/expense/:id", async (req, res) => {
     res.status(400).send("message:", err);
   }
 });
+
+
+
+
+
+app.post('/pass',  (req, res) => {
+  const { password } = req.body;
+
+  bcrypt.hash(password, 10, (error, hasedPassword) => {
+    if(error){
+      console.log("Password hasing failed", error);
+    }
+    else {
+      console.log("Hashed password:", hasedPassword);
+      const values = [hasedPassword];
+      try {
+        const result =  client.query(
+          `INSERT INTO auth (password) VALUES ($1) RETURNING id;`,
+          values
+        );
+    
+        res.status(201).json(result.rows[0]);
+      } catch (err) {
+        console.error("Error:", err);
+        res.status(500).send("Some error has occurred");
+      }
+   
+  
+    }
+   
+  })
+})
+
+
+// const storedHashedPassword = 'hashed_password_from_database';
+
+// // Compare a user-provided password with the stored hashed password
+// bcrypt.compare(plainPassword, storedHashedPassword, (error, isMatch) => {
+//   if (error) {
+//     console.error('Password comparison failed:', error);
+//   } else {
+//     if (isMatch) {
+//       console.log('Password is correct');
+//     } else {
+//       console.log('Password is incorrect');
+//     }
+//   }
+// });
+
 
 app.listen(port, (res) => {
   console.log(`The app listens on port ${port}`);
