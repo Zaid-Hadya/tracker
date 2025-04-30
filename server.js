@@ -105,51 +105,63 @@ app.delete("/expense/:id", async (req, res) => {
 
 
 
+//sign up
+app.post('/pass', (req, res) => {
+  const { hashed_password } = req.body;
 
-
-app.post('/pass',  (req, res) => {
-  const { password } = req.body;
-
-  bcrypt.hash(password, 10, (error, hasedPassword) => {
-    if(error){
-      console.log("Password hasing failed", error);
+  bcrypt.hash(hashed_password, 10, async (error, hashedPassword) => {
+    if (error) {
+      console.log("Password hashing failed", error);
+      return res.status(500).send("Hashing error");
     }
-    else {
-      console.log("Hashed password:", hasedPassword);
-      const values = [hasedPassword];
-      try {
-        const result =  client.query(
-          `INSERT INTO auth (password) VALUES ($1) RETURNING id;`,
-          values
-        );
-    
-        res.status(201).json(result.rows[0]);
-      } catch (err) {
-        console.error("Error:", err);
-        res.status(500).send("Some error has occurred");
-      }
-   
-  
+
+    const values = [hashedPassword];
+
+    try {
+      const result = await client.query(
+        `INSERT INTO auth (hashed_password) VALUES ($1) RETURNING id;`,
+        values
+      );
+
+      res.status(201).json(result.rows[0]);
+    } catch (err) {
+      res.status(500).send("Some error has occurred");
     }
-   
-  })
-})
+  });
+});
 
 
-// const storedHashedPassword = 'hashed_password_from_database';
 
-// // Compare a user-provided password with the stored hashed password
-// bcrypt.compare(plainPassword, storedHashedPassword, (error, isMatch) => {
-//   if (error) {
-//     console.error('Password comparison failed:', error);
-//   } else {
-//     if (isMatch) {
-//       console.log('Password is correct');
-//     } else {
-//       console.log('Password is incorrect');
-//     }
-//   }
-// });
+// log in
+app.post('/login', async (req, res) => {
+  const { plain_pass } = req.body;
+  try {
+  const result =  await client.query(`SELECT hashed_password FROM auth WHERE id = $1`, [1]);
+  const hashed = result.rows[0]?.hashed_password;
+
+  if(!hashed){
+    return res.status(404).send("User not found");
+  }
+
+  bcrypt.compare(plain_pass, hashed, (err, isMatch) => {
+     if (err){
+      console.error("Error comparing passwords:", err);
+      return res.status(500).send("Internal server error");
+    }
+    if(isMatch){
+      console.log("Success");
+      return res.status(200).send("Success");
+    } else {
+      return res.status(401).send("Invalid password");
+    }
+  });
+  } catch (err) {
+    console.error("Database error:", err);
+    res.status(500).send("Internal server error");
+  }
+    }
+  );
+
 
 
 app.listen(port, (res) => {
